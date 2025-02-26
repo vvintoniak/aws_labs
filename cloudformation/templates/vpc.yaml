@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Basic VPC with one public subnet"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "test"
+    Description: "Deployment environment (e.g., dev, prod)"
+
+  VpcCidr:
+    Type: String
+    Default: "10.0.0.0/16"
+    Description: "VPC CIDR Block"
+
+  SubnetCidr:
+    Type: String
+    Default: "10.0.1.0/24"
+    Description: "Subnet CIDR Block"
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-VPC"
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref SubnetCidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-Public-Subnet"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: Public-RouteTable
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+  VPCId:
+    Description: "VPC ID"
+    Value: !Ref MyVPC
+    Export:
+      Name: !Sub "${Environment}-VPC-ID"
+
+  SubnetId:
+    Description: "Public Subnet ID"
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${Environment}-Subnet-ID"

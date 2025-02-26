@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Deploy EC2 Instance without SSH Key"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "test"
+    Description: "Deployment environment (e.g., dev, prod)"
+
+  InstanceType:
+    Type: String
+    Default: "t2.micro"
+    Description: "EC2 instance type"
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c55b159cbfafe1f0  # Replace with the latest Amazon Linux 2 AMI
+      InstanceType: !Ref InstanceType
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: "0"
+          SubnetId: !ImportValue
+            Fn::Sub: "${Environment}-Subnet-ID"
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-EC2"
+
+Outputs:
+  EC2InstanceId:
+    Description: "Instance ID of EC2"
+    Value: !Ref MyEC2Instance
+
+  PublicIP:
+    Description: "Public IP of EC2"
+    Value: !GetAtt MyEC2Instance.PublicIp

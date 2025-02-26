@@ -1,0 +1,87 @@
+name: CloudFormation Multi-Stack Deployment
+
+on:
+  push:
+    branches:
+      - main   # Deploy only from main branch
+  pull_request:
+    branches:
+      - main   # Run validation on PRs
+
+permissions:
+  id-token: write   # Required for OIDC authentication
+  contents: read    # Read repository content
+
+jobs:
+  deploy_vpc:
+    name: Deploy VPC Stack
+    runs-on: ubuntu-latest
+    environment: test
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CloudFormation
+
+      - name: Validate VPC Template
+        run: aws cloudformation validate-template --template-body file://cloudformation/templates/vpc.yaml
+
+      - name: Create Change Set for VPC
+        id: create_vpc_changeset
+        run: |
+          CHANGESET_NAME="vpc-change-set-$(date +%s)"
+          aws cloudformation create-change-set \
+            --stack-name my-vpc-stack \
+            --template-body file://cloudformation/templates/vpc.yaml \
+            --parameters file://cloudformation/parameters/test-params.json \
+            --change-set-name $CHANGESET_NAME \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --change-set-type UPDATE || echo "No changes detected"
+
+      - name: Execute Change Set for VPC
+        run: |
+          aws cloudformation execute-change-set \
+            --stack-name my-vpc-stack \
+            --change-set-name $CHANGESET_NAME
+
+  deploy_ec2:
+    name: Deploy EC2 Stack
+    runs-on: ubuntu-latest
+    needs: deploy_vpc   # Ensure VPC is deployed first
+    environment: test
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CloudFormation
+
+      - name: Validate EC2 Template
+        run: aws cloudformation validate-template --template-body file://cloudformation/templates/ec2.yaml
+
+      - name: Create Change Set for EC2
+        id: create_ec2_changeset
+        run: |
+          CHANGESET_NAME="ec2-change-set-$(date +%s)"
+          aws cloudformation create-change-set \
+            --stack-name my-ec2-stack \
+            --template-body file://cloudformation/templates/ec2.yaml \
+            --parameters file://cloudformation/parameters/test-params.json \
+            --change-set-name $CHANGESET_NAME \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --change-set-type UPDATE || echo "No changes detected"
+
+      - name: Execute Change Set for EC2
+        run: |
+          aws cloudformation execute-change-set \
+            --stack-name my-ec2-stack \
+            --change-set-name $CHANGESET_NAME
