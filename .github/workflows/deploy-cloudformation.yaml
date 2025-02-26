@@ -39,6 +39,7 @@ jobs:
 
           # Check if the stack exists
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+
           if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
             echo "Stack does not exist. Creating a new stack..."
             aws cloudformation create-stack \
@@ -49,18 +50,28 @@ jobs:
             aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
-            echo "Stack exists. Creating a change set..."
-            aws cloudformation create-change-set \
+            echo "Stack exists. Checking for changes..."
+            
+            # Create the change set and capture output
+            CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
                 --stack-name $STACK_NAME \
                 --template-body file://cloudformation/templates/vpc.yaml \
                 --parameters file://cloudformation/parameters/test-params.json \
                 --change-set-name $CHANGESET_NAME \
                 --capabilities CAPABILITY_NAMED_IAM \
-                --change-set-type UPDATE || echo "NO_CHANGES"
-            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+                --change-set-type UPDATE 2>&1)
+
+            # Check if the change set contains changes
+            if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
+              echo "No changes detected. Skipping change set execution."
+              echo "NO_CHANGES=true" >> $GITHUB_ENV
+            else
+              echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+            fi
           fi
+
       - name: Execute Change Set for VPC
-        if: env.STACK_CREATED != 'true'
+        if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
             --stack-name my-vpc-stack \
@@ -93,6 +104,7 @@ jobs:
 
           # Check if the stack exists
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+
           if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
             echo "Stack does not exist. Creating a new stack..."
             aws cloudformation create-stack \
@@ -100,21 +112,31 @@ jobs:
               --template-body file://cloudformation/templates/ec2.yaml \
               --parameters file://cloudformation/parameters/test-params.json \
               --capabilities CAPABILITY_NAMED_IAM
-            echo "STACK_CREATED=true" >> $GITHUB_ENV
             aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+            echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
-            echo "Stack exists. Creating a change set..."
-            aws cloudformation create-change-set \
+            echo "Stack exists. Checking for changes..."
+            
+            # Create the change set and capture output
+            CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
                 --stack-name $STACK_NAME \
                 --template-body file://cloudformation/templates/ec2.yaml \
                 --parameters file://cloudformation/parameters/test-params.json \
                 --change-set-name $CHANGESET_NAME \
                 --capabilities CAPABILITY_NAMED_IAM \
-                --change-set-type UPDATE || echo "NO_CHANGES"
-            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+                --change-set-type UPDATE 2>&1)
+
+            # Check if the change set contains changes
+            if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
+              echo "No changes detected. Skipping change set execution."
+              echo "NO_CHANGES=true" >> $GITHUB_ENV
+            else
+              echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+            fi
           fi
+
       - name: Execute Change Set for EC2
-        if: env.STACK_CREATED != 'true'
+        if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
             --stack-name my-ec2-stack \
