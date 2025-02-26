@@ -34,15 +34,30 @@ jobs:
       - name: Create Change Set for VPC
         id: create_vpc_changeset
         run: |
-          echo "$CHANGESET_NAME"
-          CHANGESET_NAME="vpc-change-set-${{ github.run_id }}"
-          aws cloudformation create-change-set \
-            --stack-name my-vpc-stack \
-            --template-body file://cloudformation/templates/vpc.yaml \
-            --parameters file://cloudformation/parameters/test-params.json \
-            --change-set-name $CHANGESET_NAME \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --change-set-type UPDATE || echo "No changes detected"
+          STACK_NAME="my-vpc-stack"
+          CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
+
+          # Check if the stack exists
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+          if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
+            echo "Stack does not exist. Creating a new stack..."
+            aws cloudformation create-stack \
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/vpc.yaml \
+              --parameters file://cloudformation/parameters/test-params.json \
+              --capabilities CAPABILITY_NAMED_IAM
+            echo "STACK_CREATED=true" >> $GITHUB_ENV
+          else
+            echo "Stack exists. Creating a change set..."
+            aws cloudformation create-change-set \
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/vpc.yaml \
+              --parameters file://cloudformation/parameters/test-params.json \
+              --change-set-name $CHANGESET_NAME \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --change-set-type UPDATE || echo "NO_CHANGES"
+            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+          fi
 
       - name: Execute Change Set for VPC
         run: |
@@ -73,16 +88,30 @@ jobs:
       - name: Create Change Set for EC2
         id: create_ec2_changeset
         run: |
-          CHANGESET_NAME="ec2-change-set-${{ github.run_id }}"
-          echo "$CHANGESET_NAME"
-          aws cloudformation create-change-set \
-            --stack-name my-ec2-stack \
-            --template-body file://cloudformation/templates/ec2.yaml \
-            --parameters file://cloudformation/parameters/test-params.json \
-            --change-set-name $CHANGESET_NAME \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --change-set-type UPDATE || echo "No changes detected"
+          STACK_NAME="my-ec2-stack"
+          CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
 
+          # Check if the stack exists
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+          if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
+            echo "Stack does not exist. Creating a new stack..."
+            aws cloudformation create-stack \
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/ec2.yaml \
+              --parameters file://cloudformation/parameters/test-params.json \
+              --capabilities CAPABILITY_NAMED_IAM
+            echo "STACK_CREATED=true" >> $GITHUB_ENV
+          else
+            echo "Stack exists. Creating a change set..."
+            aws cloudformation create-change-set \
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/ec2.yaml \
+              --parameters file://cloudformation/parameters/test-params.json \
+              --change-set-name $CHANGESET_NAME \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --change-set-type UPDATE || echo "NO_CHANGES"
+            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+          fi
       - name: Execute Change Set for EC2
         run: |
           CHANGESET_NAME="ec2-change-set-${{ github.run_id }}"
