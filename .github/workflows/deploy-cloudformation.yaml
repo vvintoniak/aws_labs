@@ -47,17 +47,16 @@ jobs:
               --parameters file://cloudformation/parameters/test-params.json \
               --capabilities CAPABILITY_NAMED_IAM
             echo "STACK_CREATED=true" >> $GITHUB_ENV
-          else
-            echo "Stack exists. Creating a change set..."
-            aws cloudformation create-change-set \
+          fi
+          echo "Stack exists. Creating a change set..."
+          aws cloudformation create-change-set \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/vpc.yaml \
               --parameters file://cloudformation/parameters/test-params.json \
               --change-set-name $CHANGESET_NAME \
               --capabilities CAPABILITY_NAMED_IAM \
               --change-set-type UPDATE || echo "NO_CHANGES"
-            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
-          fi
+          echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
 
       - name: Execute Change Set for VPC
         run: |
@@ -101,17 +100,16 @@ jobs:
               --parameters file://cloudformation/parameters/test-params.json \
               --capabilities CAPABILITY_NAMED_IAM
             echo "STACK_CREATED=true" >> $GITHUB_ENV
-          else
-            echo "Stack exists. Creating a change set..."
-            aws cloudformation create-change-set \
+          fi
+          echo "Stack exists. Creating a change set..."
+          aws cloudformation create-change-set \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/ec2.yaml \
               --parameters file://cloudformation/parameters/test-params.json \
               --change-set-name $CHANGESET_NAME \
               --capabilities CAPABILITY_NAMED_IAM \
               --change-set-type UPDATE || echo "NO_CHANGES"
-            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
-          fi
+          echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
       - name: Execute Change Set for EC2
         run: |
           CHANGESET_NAME="ec2-change-set-${{ github.run_id }}"
