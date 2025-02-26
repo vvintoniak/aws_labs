@@ -68,7 +68,7 @@ jobs:
             else
               echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
               echo "Changes detected:"
-              echo "CHANGESET_OUTPUT"
+              echo "$CHANGESET_OUTPUT"
             fi
           fi
 
@@ -135,7 +135,7 @@ jobs:
             else
               echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
               echo "Changes detected:"
-              echo "CHANGESET_OUTPUT"
+              echo "$CHANGESET_OUTPUT"
             fi
           fi
 
