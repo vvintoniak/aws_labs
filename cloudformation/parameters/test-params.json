@@ -13,7 +13,7 @@
     },
     {
       "ParameterKey": "InstanceType",
-      "ParameterValue": "t3g.micro"
+      "ParameterValue": "t3a.micro"
     }
   ]
   
