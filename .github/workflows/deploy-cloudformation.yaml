@@ -46,6 +46,7 @@ jobs:
               --template-body file://cloudformation/templates/vpc.yaml \
               --parameters file://cloudformation/parameters/test-params.json \
               --capabilities CAPABILITY_NAMED_IAM
+            aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           fi
           echo "Stack exists. Creating a change set..."
@@ -100,6 +101,7 @@ jobs:
               --parameters file://cloudformation/parameters/test-params.json \
               --capabilities CAPABILITY_NAMED_IAM
             echo "STACK_CREATED=true" >> $GITHUB_ENV
+            aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
           fi
           echo "Stack exists. Creating a change set..."
           aws cloudformation create-change-set \
