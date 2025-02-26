@@ -34,6 +34,7 @@ jobs:
       - name: Create Change Set for VPC
         id: create_vpc_changeset
         run: |
+          echo "$CHANGESET_NAME"
           CHANGESET_NAME="vpc-change-set-$(date +%s)"
           aws cloudformation create-change-set \
             --stack-name my-vpc-stack \
@@ -72,6 +73,7 @@ jobs:
         id: create_ec2_changeset
         run: |
           CHANGESET_NAME="ec2-change-set-$(date +%s)"
+          echo "$CHANGESET_NAME"
           aws cloudformation create-change-set \
             --stack-name my-ec2-stack \
             --template-body file://cloudformation/templates/ec2.yaml \
