@@ -35,7 +35,7 @@ jobs:
         id: create_vpc_changeset
         run: |
           echo "$CHANGESET_NAME"
-          CHANGESET_NAME="vpc-change-set-$(date +%s)"
+          CHANGESET_NAME="vpc-change-set-${{ github.run_id }}"
           aws cloudformation create-change-set \
             --stack-name my-vpc-stack \
             --template-body file://cloudformation/templates/vpc.yaml \
@@ -46,6 +46,7 @@ jobs:
 
       - name: Execute Change Set for VPC
         run: |
+          CHANGESET_NAME="vpc-change-set-${{ github.run_id }}"
           aws cloudformation execute-change-set \
             --stack-name my-vpc-stack \
             --change-set-name $CHANGESET_NAME
@@ -72,7 +73,7 @@ jobs:
       - name: Create Change Set for EC2
         id: create_ec2_changeset
         run: |
-          CHANGESET_NAME="ec2-change-set-$(date +%s)"
+          CHANGESET_NAME="ec2-change-set-${{ github.run_id }}"
           echo "$CHANGESET_NAME"
           aws cloudformation create-change-set \
             --stack-name my-ec2-stack \
@@ -84,6 +85,7 @@ jobs:
 
       - name: Execute Change Set for EC2
         run: |
+          CHANGESET_NAME="ec2-change-set-${{ github.run_id }}"
           aws cloudformation execute-change-set \
             --stack-name my-ec2-stack \
             --change-set-name $CHANGESET_NAME
