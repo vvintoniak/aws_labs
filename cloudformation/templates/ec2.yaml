@@ -24,7 +24,7 @@ Resources:
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-0c55b159cbfafe1f0  # Replace with the latest Amazon Linux 2 AMI
+      ImageId: ami-00354acb6e3508fd0  # Replace with the latest Amazon Linux 2 AMI
       InstanceType: !Ref InstanceType
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
