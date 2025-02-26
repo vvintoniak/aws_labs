@@ -132,6 +132,8 @@ jobs:
               echo "NO_CHANGES=true" >> $GITHUB_ENV
             else
               echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+              echo "Changes detected:"
+              echo "CHANGESET_OUTPUT"
             fi
           fi
 
