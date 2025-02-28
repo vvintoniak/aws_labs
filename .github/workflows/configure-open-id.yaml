@@ -36,11 +36,40 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Check if OIDC Provider exists
+        id: check_oidc_provider
+        run: |
+          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          OIDC_PROVIDER="token.actions.githubusercontent.com"
+          PROVIDER_ARN="arn:aws:iam::$ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER"
+
+          EXISTING_PROVIDER=$(aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[?contains(Arn, '$OIDC_PROVIDER')].Arn" --output text)
+
+          if [ -z "$EXISTING_PROVIDER" ]; then
+            echo "OIDC provider does not exist. Creating..."
+            echo "CREATE_OIDC=true" >> $GITHUB_ENV
+          else
+            echo "OIDC provider already exists: $EXISTING_PROVIDER"
+            echo "CREATE_OIDC=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create OIDC Provider (if not exists)
+        if: env.CREATE_OIDC == 'true'
+        run: |
+          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          OIDC_PROVIDER="token.actions.githubusercontent.com"
+
+          aws iam create-open-id-connect-provider \
+            --url "https://$OIDC_PROVIDER" \
+            --client-id-list "sts.amazonaws.com" \
+            --thumbprint-list "a031c46782e6e6c662c2c87c76da9aa62ccabd8e"
+
+          echo "OIDC Provider created successfully."
+
       - name: Check if OIDC Role exists
         id: check_role
         run: |
           ROLE_NAME="${{ github.event.inputs.role_name }}"
-          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
           EXISTING_ROLE=$(aws iam get-role --role-name "$ROLE_NAME" --query "Role.RoleName" --output text || echo "NOT_FOUND")
           if [ "$EXISTING_ROLE" = "NOT_FOUND" ]; then
             echo "Role does not exist. Creating..."
