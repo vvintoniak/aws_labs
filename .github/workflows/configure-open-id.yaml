@@ -23,6 +23,7 @@ jobs:
   setup-oidc-role:
     name: Configure AWS OIDC Role
     runs-on: ubuntu-latest
+    environment: test
 
     steps:
       - name: Checkout repository
