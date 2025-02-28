@@ -1,0 +1,83 @@
+name: Setup AWS OIDC Role
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_account_id:
+        description: "AWS Account ID"
+        required: true
+      role_name:
+        description: "AWS OIDC Role Name"
+        required: true
+        default: "GitHubOIDCRole"
+      policy_arn:
+        description: "IAM Policy ARN to attach"
+        required: false
+        default: "arn:aws:iam::aws:policy/AdministratorAccess"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  setup-oidc-role:
+    name: Configure AWS OIDC Role
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (Using Access Keys)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Check if OIDC Role exists
+        id: check_role
+        run: |
+          ROLE_NAME="${{ github.event.inputs.role_name }}"
+          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          EXISTING_ROLE=$(aws iam get-role --role-name "$ROLE_NAME" --query "Role.RoleName" --output text || echo "NOT_FOUND")
+          if [ "$EXISTING_ROLE" = "NOT_FOUND" ]; then
+            echo "Role does not exist. Creating..."
+            echo "CREATE_ROLE=true" >> $GITHUB_ENV
+          else
+            echo "Role already exists."
+            echo "CREATE_ROLE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create OIDC Role (if not exists)
+        if: env.CREATE_ROLE == 'true'
+        run: |
+          ROLE_NAME="${{ github.event.inputs.role_name }}"
+          POLICY_ARN="${{ github.event.inputs.policy_arn }}"
+          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          OIDC_PROVIDER="token.actions.githubusercontent.com"
+
+          # Create IAM Role with OIDC trust policy
+          aws iam create-role --role-name "$ROLE_NAME" --assume-role-policy-document '{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::'$ACCOUNT_ID':oidc-provider/'$OIDC_PROVIDER'"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "'$OIDC_PROVIDER':sub": "repo:${{ github.repository }}:ref:refs/heads/main"
+                  }
+                }
+              }
+            ]
+          }'
+
+          # Attach IAM Policy
+          aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn "$POLICY_ARN"
+
+      - name: Verify OIDC Role Creation
+        run: aws iam get-role --role-name "${{ github.event.inputs.role_name }}"

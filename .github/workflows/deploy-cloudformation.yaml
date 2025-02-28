@@ -3,10 +3,15 @@ name: CloudFormation Multi-Stack Deployment
 on:
   push:
     branches:
-      - main   # Deploy only from main branch
+      - main
+    paths:
+      - 'cloudformation/**' 
   pull_request:
     branches:
-      - main   # Run validation on PRs
+      - main
+    paths:
+      - 'cloudformation/**'  
+
 
 permissions:
   id-token: write   # Required for OIDC authentication
