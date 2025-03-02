@@ -39,7 +39,7 @@ jobs:
       - name: Check if OIDC Provider exists
         id: check_oidc_provider
         run: |
-          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
           OIDC_PROVIDER="token.actions.githubusercontent.com"
           PROVIDER_ARN="arn:aws:iam::$ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER"
 
@@ -56,7 +56,7 @@ jobs:
       - name: Create OIDC Provider (if not exists)
         if: env.CREATE_OIDC == 'true'
         run: |
-          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
           OIDC_PROVIDER="token.actions.githubusercontent.com"
 
           aws iam create-open-id-connect-provider \
@@ -108,6 +108,7 @@ jobs:
 
           # Attach IAM Policy
           aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn "$POLICY_ARN"
+
 
       - name: Verify OIDC Role Creation
         run: aws iam get-role --role-name "${{ github.event.inputs.role_name }}"
