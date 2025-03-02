@@ -5,24 +5,28 @@ on:
     branches:
       - main
     paths:
-      - 'cloudformation/**' 
+      - "cloudformation/**"
   pull_request:
     branches:
       - main
     paths:
-      - 'cloudformation/**'  
-
+      - "cloudformation/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment (test, dev, prod, etc.)"
+        required: true
+        default: "test"
 
 permissions:
-  id-token: write   # Required for OIDC authentication
+  id-token: write   # Required for OIDC
   contents: read    # Read repository content
 
 jobs:
   deploy_vpc:
     name: Deploy VPC Stack
     runs-on: ubuntu-latest
-    environment: test
-
+    environment: ${{ github.event.inputs.environment || 'test' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,42 +35,45 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CloudFormation
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
 
       - name: Validate VPC Template
-        run: aws cloudformation validate-template --template-body file://cloudformation/templates/vpc.yaml
+        run: aws cloudformation validate-template \
+          --template-body file://cloudformation/templates/vpc.yaml
 
       - name: Create Change Set for VPC
         id: create_vpc_changeset
         run: |
-          STACK_NAME="my-vpc-stack"
+          ENV_NAME="${{ github.event.inputs.environment }}"
+          STACK_NAME="my-vpc-stack-$ENV_NAME"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
 
-          # Check if the stack exists
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+          # Optionally pick parameters by environment. E.g.:
+          #   paramsFile="cloudformation/parameters/${ENV_NAME}-params.json"
+          paramsFile="cloudformation/parameters/test-params.json"
+
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
+                          --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
 
           if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
             echo "Stack does not exist. Creating a new stack..."
             aws cloudformation create-stack \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/vpc.yaml \
-              --parameters file://cloudformation/parameters/test-params.json \
+              --parameters file://$paramsFile \
               --capabilities CAPABILITY_NAMED_IAM
             aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
             echo "Stack exists. Checking for changes..."
-            
-            # Create the change set and capture output
             CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
-                --stack-name $STACK_NAME \
-                --template-body file://cloudformation/templates/vpc.yaml \
-                --parameters file://cloudformation/parameters/test-params.json \
-                --change-set-name $CHANGESET_NAME \
-                --capabilities CAPABILITY_NAMED_IAM \
-                --change-set-type UPDATE 2>&1)
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/vpc.yaml \
+              --parameters file://$paramsFile \
+              --change-set-name $CHANGESET_NAME \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --change-set-type UPDATE 2>&1)
 
-            # Check if the change set contains changes
             if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
               echo "No changes detected. Skipping change set execution."
               echo "NO_CHANGES=true" >> $GITHUB_ENV
@@ -81,14 +88,14 @@ jobs:
         if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
-            --stack-name my-vpc-stack \
+            --stack-name "my-vpc-stack-${{ github.event.inputs.environment }}" \
             --change-set-name $CHANGESET_NAME
 
   deploy_ec2:
     name: Deploy EC2 Stack
     runs-on: ubuntu-latest
-    needs: deploy_vpc   # Ensure VPC is deployed first
-    environment: test
+    needs: deploy_vpc
+    environment: ${{ github.event.inputs.environment || 'test' }}
 
     steps:
       - name: Checkout Repository
@@ -98,42 +105,42 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CloudFormation
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
 
       - name: Validate EC2 Template
-        run: aws cloudformation validate-template --template-body file://cloudformation/templates/ec2.yaml
+        run: aws cloudformation validate-template \
+          --template-body file://cloudformation/templates/ec2.yaml
 
       - name: Create Change Set for EC2
         id: create_ec2_changeset
         run: |
-          STACK_NAME="my-ec2-stack"
+          ENV_NAME="${{ github.event.inputs.environment }}"
+          STACK_NAME="my-ec2-stack-$ENV_NAME"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
+          paramsFile="cloudformation/parameters/test-params.json"
 
-          # Check if the stack exists
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
+                          --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
 
           if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
             echo "Stack does not exist. Creating a new stack..."
             aws cloudformation create-stack \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/ec2.yaml \
-              --parameters file://cloudformation/parameters/test-params.json \
+              --parameters file://$paramsFile \
               --capabilities CAPABILITY_NAMED_IAM
             aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
             echo "Stack exists. Checking for changes..."
-            
-            # Create the change set and capture output
             CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
-                --stack-name $STACK_NAME \
-                --template-body file://cloudformation/templates/ec2.yaml \
-                --parameters file://cloudformation/parameters/test-params.json \
-                --change-set-name $CHANGESET_NAME \
-                --capabilities CAPABILITY_NAMED_IAM \
-                --change-set-type UPDATE 2>&1)
+              --stack-name $STACK_NAME \
+              --template-body file://cloudformation/templates/ec2.yaml \
+              --parameters file://$paramsFile \
+              --change-set-name $CHANGESET_NAME \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --change-set-type UPDATE 2>&1)
 
-            # Check if the change set contains changes
             if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
               echo "No changes detected. Skipping change set execution."
               echo "NO_CHANGES=true" >> $GITHUB_ENV
@@ -148,5 +155,5 @@ jobs:
         if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
-            --stack-name my-ec2-stack \
+            --stack-name "my-ec2-stack-${{ github.event.inputs.environment }}" \
             --change-set-name $CHANGESET_NAME
