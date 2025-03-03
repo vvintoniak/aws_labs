@@ -3,9 +3,6 @@ name: Setup AWS OIDC Role
 on:
   workflow_dispatch:
     inputs:
-      aws_account_id:
-        description: "AWS Account ID"
-        required: true
       role_name:
         description: "AWS OIDC Role Name"
         required: true
@@ -84,7 +81,7 @@ jobs:
         run: |
           ROLE_NAME="${{ github.event.inputs.role_name }}"
           POLICY_ARN="${{ github.event.inputs.policy_arn }}"
-          ACCOUNT_ID="${{ github.event.inputs.aws_account_id }}"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
           OIDC_PROVIDER="token.actions.githubusercontent.com"
 
           # Create IAM Role with OIDC trust policy
@@ -99,7 +96,8 @@ jobs:
                 "Action": "sts:AssumeRoleWithWebIdentity",
                 "Condition": {
                   "StringEquals": {
-                    "'$OIDC_PROVIDER':sub": "repo:${{ github.repository }}:ref:refs/heads/main"
+                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                    "'$OIDC_PROVIDER':sub": "repo:${{ github.repository }}:*"
                   }
                 }
               }
