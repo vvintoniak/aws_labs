@@ -27,6 +27,8 @@ jobs:
     name: Deploy VPC Stack
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'test' }}
+    env:
+      ACTIONS_STEP_DEBUG: 'true'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
