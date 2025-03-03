@@ -15,17 +15,26 @@ Parameters:
     Type: String
     Default: "10.0.0.0/16"
     Description: "VPC CIDR Block"
-
   SubnetCidr:
     Type: String
     Default: "10.0.1.0/24"
     Description: "Subnet CIDR Block"
+  SSHDefaultKey:
+    Type: String
+    Description: "SSH Key"
+
 Resources:
+  SSHKey:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: "root_key"
+      PublicKeyMaterial: "${SSHDefaultKey}"
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-00354acb6e3508fd0  # Replace with the latest Amazon Linux 2 AMI
+      ImageId: ami-00354acb6e3508fd0
       InstanceType: !Ref InstanceType
+      KeyName: !GetAtt SSHKey.KeyName
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeviceIndex: "0"

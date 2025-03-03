@@ -117,7 +117,7 @@ jobs:
           ENV_NAME="${{ github.event.inputs.environment }}"
           STACK_NAME="my-ec2-stack-$ENV_NAME"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
-          paramsFile="cloudformation/parameters/test-params.json"
+          paramsFile="cloudformation/parameters/ec2-params.json"
 
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
                           --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
