@@ -85,29 +85,28 @@ jobs:
           OIDC_PROVIDER="token.actions.githubusercontent.com"
 
           # Create IAM Role with OIDC trust policy
-          aws iam create-role --role-name "$ROLE_NAME" --assume-role-policy-document '{
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Federated": "arn:aws:iam::'$ACCOUNT_ID':oidc-provider/'$OIDC_PROVIDER'"
-                },
-                "Action": "sts:AssumeRoleWithWebIdentity",
-                "Condition": {
-                  "StringEquals": {
-                    {
-                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" 
+          aws iam create-role \
+            --role-name "$ROLE_NAME" \
+            --assume-role-policy-document "{
+              \"Version\": \"2012-10-17\",
+              \"Statement\": [
+                {
+                  \"Effect\": \"Allow\",
+                  \"Principal\": {
+                    \"Federated\": \"arn:aws:iam::$ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER\"
+                  },
+                  \"Action\": \"sts:AssumeRoleWithWebIdentity\",
+                  \"Condition\": {
+                    \"StringEquals\": {
+                      \"token.actions.githubusercontent.com:aud\": \"sts.amazonaws.com\"
                     },
-                  "StringLike": {
-                    { 
-                    "'$OIDC_PROVIDER':sub": "repo:${{ github.repository }}:*"
+                    \"StringLike\": {
+                      \"$OIDC_PROVIDER:sub\": \"repo:\${{ github.repository }}:*\"
                     }
                   }
                 }
-              }
-            ]
-          }'
+              ]
+            }"
 
           # Attach IAM Policy
           aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn "$POLICY_ARN"
