@@ -96,8 +96,13 @@ jobs:
                 "Action": "sts:AssumeRoleWithWebIdentity",
                 "Condition": {
                   "StringEquals": {
-                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                    {
+                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" 
+                    },
+                  "StringLike": {
+                    { 
                     "'$OIDC_PROVIDER':sub": "repo:${{ github.repository }}:*"
+                    }
                   }
                 }
               }
