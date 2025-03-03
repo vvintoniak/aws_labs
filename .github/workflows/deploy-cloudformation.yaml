@@ -37,7 +37,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::905418218028:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole2
 
       - name: Validate VPC Template
         run: aws cloudformation validate-template \
