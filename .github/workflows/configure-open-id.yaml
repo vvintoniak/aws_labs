@@ -101,7 +101,7 @@ jobs:
                       \"token.actions.githubusercontent.com:aud\": \"sts.amazonaws.com\"
                     },
                     \"StringLike\": {
-                      \"$OIDC_PROVIDER:sub\": \"repo:\${{ github.repository }}:*\"
+                      \"${OIDC_PROVIDER}:sub\": \"repo:${GITHUB_REPOSITORY}:*\"
                     }
                   }
                 }
