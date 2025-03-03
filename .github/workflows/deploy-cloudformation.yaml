@@ -40,8 +40,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
 
       - name: Validate VPC Template
-        run: aws cloudformation validate-template \
-          --template-body file://cloudformation/templates/vpc.yaml
+        run: aws cloudformation validate-template --template-body file://cloudformation/templates/vpc.yaml
 
       - name: Create Change Set for VPC
         id: create_vpc_changeset
@@ -110,8 +109,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
 
       - name: Validate EC2 Template
-        run: aws cloudformation validate-template \
-          --template-body file://cloudformation/templates/ec2.yaml
+        run: aws cloudformation validate-template --template-body file://cloudformation/templates/ec2.yaml
 
       - name: Create Change Set for EC2
         id: create_ec2_changeset
