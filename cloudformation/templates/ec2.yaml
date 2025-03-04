@@ -21,6 +21,21 @@ Resources:
     Properties:
       KeyName: "root_key"
       PublicKeyMaterial: !Ref SSHDefaultKey
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow SSH access from the internet"
+      VpcId: !ImportValue
+        Fn::Sub: "${Environment}-VPC-ID"  # Ensure you have exported VPC-ID in another stack
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0  # Allow SSH from any IP (Modify this for better security)
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-SSH-SG"
+
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -32,6 +47,8 @@ Resources:
           DeviceIndex: "0"
           SubnetId: !ImportValue
             Fn::Sub: "${Environment}-Subnet-ID"
+          GroupSet:
+            - !Ref SSHSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub "${Environment}-EC2"
