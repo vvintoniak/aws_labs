@@ -1,0 +1,15 @@
+[
+    {
+      "ParameterKey": "Environment",
+      "ParameterValue": "test"
+    },
+    {
+      "ParameterKey": "InstanceType",
+      "ParameterValue": "t2.micro"
+    },
+    {
+      "ParameterKey": "SSHDefaultKey",
+      "ParameterValue": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD3s7FtOT236Y0Aoyt+TJhHY8kzJkZqdjaO5wAZezb4XfREDY5twxLD2mznQJNynm6Wgp2K+pDQcprQ8ZcoGg/vAYrfwpQz6RuvEykneuTbevXTF4j/ko/x/04EIX8LiJxMdzSeOLpWDN1JdPEnuDBWRTpkZ71TA9ZXdCkXz6/JPn60clQEkh8+1WayFTWJF+EWDVZMtuECYJjjiEoz01M0mW8qwGyZJQWqPJHy0E3jw657ihwzB58aQm9n+ByL74yAgheUkxlJhq9COrQWp8UrNe6sncswoXmsr/HHCHrnRiKeRuIYn0Q9vbp3XmjCO75/VF1wcj/jbDGzdS1CtORGQUXDLBjqbsv1maWApHO/vI0OPebZiAg0RLBYkF0U4fU4+REf3K0DDAYkQTmDeAZWZcT3BDBclAfogMVYQdAIQduJ5NH5AVvn+daBTCJ1022ubmLO1muWiZnuxabnUcgsyZgBFPLgA+BRoaPqa2v9KJzidiiWY9pOgrl1UUUTyJU= vvintoniak@vvintoniak-mbp.local"
+    }
+  ]
+  

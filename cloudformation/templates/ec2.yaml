@@ -11,14 +11,6 @@ Parameters:
     Type: String
     Default: "t2.micro"
     Description: "EC2 instance type"
-  VpcCidr:
-    Type: String
-    Default: "10.0.0.0/16"
-    Description: "VPC CIDR Block"
-  SubnetCidr:
-    Type: String
-    Default: "10.0.1.0/24"
-    Description: "Subnet CIDR Block"
   SSHDefaultKey:
     Type: String
     Description: "SSH Key"

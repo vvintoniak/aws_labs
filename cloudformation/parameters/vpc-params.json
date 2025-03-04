@@ -10,10 +10,6 @@
     {
       "ParameterKey": "SubnetCidr",
       "ParameterValue": "10.0.1.0/24"
-    },
-    {
-      "ParameterKey": "InstanceType",
-      "ParameterValue": "t2.micro"
     }
   ]
   
