@@ -88,7 +88,7 @@ jobs:
         if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
-            --stack-name "my-vpc-stack-${{ github.event.inputs.environment }}" \
+            --stack-name "my-vpc-stack" \
             --change-set-name $CHANGESET_NAME
 
   deploy_ec2:
@@ -153,5 +153,5 @@ jobs:
         if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
           aws cloudformation execute-change-set \
-            --stack-name "my-ec2-stack-${{ github.event.inputs.environment }}" \
+            --stack-name "my-ec2-stack" \
             --change-set-name $CHANGESET_NAME
