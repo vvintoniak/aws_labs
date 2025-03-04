@@ -20,13 +20,13 @@ Resources:
     Type: AWS::EC2::KeyPair
     Properties:
       KeyName: "root_key"
-      PublicKeyMaterial: "${SSHDefaultKey}"
+      PublicKeyMaterial: !Ref SSHDefaultKey
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: ami-00354acb6e3508fd0
       InstanceType: !Ref InstanceType
-      KeyName: !GetAtt SSHKey.KeyName
+      KeyName: !Ref SSHKey
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeviceIndex: "0"

@@ -45,8 +45,7 @@ jobs:
       - name: Create Change Set for VPC
         id: create_vpc_changeset
         run: |
-          ENV_NAME="${{ github.event.inputs.environment }}"
-          STACK_NAME="my-vpc-stack-$ENV_NAME"
+          STACK_NAME="my-vpc-stack"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
 
           # Optionally pick parameters by environment. E.g.:
@@ -114,8 +113,7 @@ jobs:
       - name: Create Change Set for EC2
         id: create_ec2_changeset
         run: |
-          ENV_NAME="${{ github.event.inputs.environment }}"
-          STACK_NAME="my-ec2-stack-$ENV_NAME"
+          STACK_NAME="my-ec2-stack"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
           paramsFile="cloudformation/parameters/ec2-params.json"
 
