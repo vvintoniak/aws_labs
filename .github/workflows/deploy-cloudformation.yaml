@@ -47,9 +47,6 @@ jobs:
         run: |
           STACK_NAME="my-vpc-stack"
           CHANGESET_NAME="cf-changeset-${{ github.run_id }}"
-
-          # Optionally pick parameters by environment. E.g.:
-          #   paramsFile="cloudformation/parameters/${ENV_NAME}-params.json"
           paramsFile="cloudformation/parameters/vpc-params.json"
 
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
@@ -66,22 +63,41 @@ jobs:
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
             echo "Stack exists. Checking for changes..."
-            CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
+            aws cloudformation create-change-set \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/vpc.yaml \
               --parameters file://$paramsFile \
               --change-set-name $CHANGESET_NAME \
               --capabilities CAPABILITY_NAMED_IAM \
-              --change-set-type UPDATE 2>&1)
+              --change-set-type UPDATE > /dev/null
 
-            if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
-              echo "No changes detected. Skipping change set execution."
-              echo "NO_CHANGES=true" >> $GITHUB_ENV
-            else
-              echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
-              echo "Changes detected:"
-              echo "$CHANGESET_OUTPUT"
+            # Wait a moment to let the change set register
+            sleep 5
+
+            # Get the change set status
+            CHANGESET_STATUS=$(aws cloudformation describe-change-set \
+              --stack-name $STACK_NAME \
+              --change-set-name $CHANGESET_NAME \
+              --query "Status" --output text)
+
+            if [[ "$CHANGESET_STATUS" == "FAILED" ]]; then
+              REASON=$(aws cloudformation describe-change-set \
+                --stack-name $STACK_NAME \
+                --change-set-name $CHANGESET_NAME \
+                --query "StatusReason" --output text)
+
+              if [[ "$REASON" == *"The submitted information didn't contain changes"* ]]; then
+                echo "No changes detected. Skipping execution."
+                echo "NO_CHANGES=true" >> $GITHUB_ENV
+                exit 0
+              else
+                echo "Change Set failed for another reason: $REASON"
+                exit 1
+              fi
             fi
+
+            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+            echo "Changes detected. Change Set created successfully."
           fi
 
       - name: Execute Change Set for VPC
@@ -131,24 +147,43 @@ jobs:
             echo "STACK_CREATED=true" >> $GITHUB_ENV
           else
             echo "Stack exists. Checking for changes..."
-            CHANGESET_OUTPUT=$(aws cloudformation create-change-set \
+            aws cloudformation create-change-set \
               --stack-name $STACK_NAME \
               --template-body file://cloudformation/templates/ec2.yaml \
               --parameters file://$paramsFile \
               --change-set-name $CHANGESET_NAME \
               --capabilities CAPABILITY_NAMED_IAM \
-              --change-set-type UPDATE 2>&1)
+              --change-set-type UPDATE > /dev/null
 
-            if echo "$CHANGESET_OUTPUT" | grep -q "The submitted information didn't contain changes"; then
-              echo "No changes detected. Skipping change set execution."
-              echo "NO_CHANGES=true" >> $GITHUB_ENV
-            else
-              echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
-              echo "Changes detected:"
-              echo "$CHANGESET_OUTPUT"
+            # Wait a moment to let the change set register
+            sleep 5
+
+            # Get the change set status
+            CHANGESET_STATUS=$(aws cloudformation describe-change-set \
+              --stack-name $STACK_NAME \
+              --change-set-name $CHANGESET_NAME \
+              --query "Status" --output text)
+
+            if [[ "$CHANGESET_STATUS" == "FAILED" ]]; then
+              REASON=$(aws cloudformation describe-change-set \
+                --stack-name $STACK_NAME \
+                --change-set-name $CHANGESET_NAME \
+                --query "StatusReason" --output text)
+
+              if [[ "$REASON" == *"The submitted information didn't contain changes"* ]]; then
+                echo "No changes detected. Skipping execution."
+                echo "NO_CHANGES=true" >> $GITHUB_ENV
+                exit 0
+              else
+                echo "Change Set failed for another reason: $REASON"
+                exit 1
+              fi
             fi
-          fi
 
+            echo "CHANGESET_NAME=$CHANGESET_NAME" >> $GITHUB_ENV
+            echo "Changes detected. Change Set created successfully."
+          fi
+          
       - name: Execute Change Set for EC2
         if: env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true'
         run: |
