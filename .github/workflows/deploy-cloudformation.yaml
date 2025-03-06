@@ -1,3 +1,23 @@
+name: CloudFormation Multi-Stack Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "cloudformation/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "cloudformation/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment (test, dev, prod, etc.)"
+        required: true
+        default: "test"
+
 # Reusable anchor for deploying a CloudFormation stack using change sets
 x-deploy-stack-steps: &x-deploy-stack-steps
   - name: Validate Template
@@ -60,30 +80,6 @@ x-deploy-stack-steps: &x-deploy-stack-steps
       aws cloudformation execute-change-set \
         --stack-name $STACK_NAME \
         --change-set-name cf-changeset-${{ github.run_id }}
-
-name: CloudFormation Multi-Stack Deployment
-
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - "cloudformation/**"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "cloudformation/**"
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Deployment environment (test, dev, prod, etc.)"
-        required: true
-        default: "test"
-
-permissions:
-  id-token: write
-  contents: read
 
 jobs:
   deploy_vpc:
