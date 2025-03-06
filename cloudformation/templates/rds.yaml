@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Deploy RDS with MariaDB 10.11 using AWS Secrets Manager"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "test"
+    Description: "Deployment environment (e.g., dev, prod)"
+    
+  DBInstanceIdentifier:
+    Type: String
+    Default: "database-1"
+    Description: "Identifier for the RDS instance"
+
+  MasterUsername:
+    Type: String
+    Default: "admin"
+    Description: "Master username for RDS"
+
+  InstanceClass:
+    Type: String
+    Default: "db.t3.small"
+    Description: "RDS instance class"
+
+Resources:
+  # AWS Secrets Manager secret for storing RDS credentials
+  RDSSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${DBInstanceIdentifier}-credentials"
+      Description: "Credentials for the RDS instance"
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${MasterUsername}"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\\'
+      Tags:
+        - Key: Name
+          Value: !Ref DBInstanceIdentifier
+
+  # Security Group for RDS that allows access from EC2 (EC2 SG ID is imported)
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allows access from EC2 to RDS (port 3306)"
+      VpcId: !ImportValue
+        Fn::Sub: "${Environment}-VPC-ID"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !ImportValue MyEC2SecurityGroup
+
+  # RDS instance
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      Engine: mariadb
+      EngineVersion: "10.11"
+      MasterUsername: !Sub "{{resolve:secretsmanager:${RDSSecret}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${RDSSecret}:SecretString:password}}"
+      DBInstanceClass: !Ref InstanceClass
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 1000
+      StorageType: gp3
+      PubliclyAccessible: false
+      MultiAZ: false
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      EnablePerformanceInsights: false
+      MonitoringInterval: 60
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "Endpoint of the RDS instance"
+    Value: !GetAtt MyRDSInstance.Endpoint.Address
+
+  RDSSecretARN:
+    Description: "ARN of the RDS credentials secret"
+    Value: !Ref RDSSecret
+    Export:
+      Name: RDSSecretARN

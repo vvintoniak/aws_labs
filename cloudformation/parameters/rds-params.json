@@ -1,0 +1,19 @@
+[
+    {
+      "ParameterKey": "Environment",
+      "ParameterValue": "test"
+    },
+    {
+      "ParameterKey": "DBInstanceIdentifier",
+      "ParameterValue": "my-rds-db"
+    },
+    {
+      "ParameterKey": "MasterUsername",
+      "ParameterValue": "admin"
+    },
+    {
+      "ParameterKey": "InstanceClass",
+      "ParameterValue": "db.t3.small"
+    }
+  ]
+  

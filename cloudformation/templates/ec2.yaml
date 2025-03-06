@@ -35,6 +35,32 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Environment}-SSH-SG"
+  EC2IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "EC2SecretsManagerRole-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "SecretsManagerAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !ImportValue RDSSecretARN  
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "EC2InstanceProfile-${AWS::StackName}"
+      Roles:
+        - !Ref EC2IAMRole
 
   MyEC2Instance:
     Type: AWS::EC2::Instance
@@ -52,6 +78,20 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Environment}-EC2"
+
+      UserData:
+        Fn::Base64:
+          !Sub
+            - |
+              #!/bin/bash
+              echo "Retrieving RDS credentials from AWS Secrets Manager..."
+              SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id ${RDSSecretARN} --query SecretString --output text --region us-east-1)
+              DB_USERNAME=$(echo $SECRET_JSON | jq -r .username)
+              DB_PASSWORD=$(echo $SECRET_JSON | jq -r .password)
+              echo "export DB_USERNAME=${DB_USERNAME}" >> /etc/environment
+              echo "export DB_PASSWORD=${DB_PASSWORD}" >> /etc/environment
+              echo "Credentials loaded."
+            - { RDSSecretARN: !ImportValue RDSSecretARN }
 
 Outputs:
   EC2InstanceId:
