@@ -35,7 +35,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_SECRET_ACCESS_KEY }}:role/GitHubOIDCRole
 
       - name: Deploy CloudFormation
         uses: ./.github/actions/deploy-cloudformation
@@ -57,7 +57,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_SECRET_ACCESS_KEY }}:role/GitHubOIDCRole
 
       - name: Deploy CloudFormation
         uses: ./.github/actions/deploy-cloudformation
@@ -77,6 +77,7 @@ jobs:
     name: Deploy EC2 Stack
     runs-on: ubuntu-latest
     environment: test
+    needs: [deploy_vpc, deploy_rds]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -85,7 +86,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_SECRET_ACCESS_KEY }}:role/GitHubOIDCRole
 
       - name: Deploy CloudFormation
         uses: ./.github/actions/deploy-cloudformation
