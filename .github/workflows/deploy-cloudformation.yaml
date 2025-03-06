@@ -18,79 +18,15 @@ on:
         required: true
         default: "test"
 
-# Reusable anchor for deploying a CloudFormation stack using change sets
-x-deploy-stack-steps: &x-deploy-stack-steps
-  - name: Validate Template
-    run: aws cloudformation validate-template --template-body file://$TEMPLATE_FILE
-  - name: Create Change Set
-    id: create_changeset
-    run: |
-      STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
-                      --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
-      
-      if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
-        echo "Stack does not exist. Creating a new stack..."
-        aws cloudformation create-stack \
-          --stack-name $STACK_NAME \
-          --template-body file://$TEMPLATE_FILE \
-          --parameters file://$PARAMS_FILE \
-          --capabilities CAPABILITY_NAMED_IAM
-        aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
-        echo "STACK_CREATED=true" >> $GITHUB_ENV
-      else
-        echo "Stack exists. Checking for changes..."
-        aws cloudformation create-change-set \
-          --stack-name $STACK_NAME \
-          --template-body file://$TEMPLATE_FILE \
-          --parameters file://$PARAMS_FILE \
-          --change-set-name cf-changeset-${{ github.run_id }} \
-          --capabilities CAPABILITY_NAMED_IAM \
-          --change-set-type UPDATE > /dev/null
-        
-        # Wait a moment for the change set to register
-        sleep 5
-        
-        CHANGESET_STATUS=$(aws cloudformation describe-change-set \
-          --stack-name $STACK_NAME \
-          --change-set-name cf-changeset-${{ github.run_id }} \
-          --query "Status" --output text)
-        
-        if [[ "$CHANGESET_STATUS" == "FAILED" ]]; then
-          REASON=$(aws cloudformation describe-change-set \
-            --stack-name $STACK_NAME \
-            --change-set-name cf-changeset-${{ github.run_id }} \
-            --query "StatusReason" --output text)
-          
-          if [[ "$REASON" == *"The submitted information didn't contain changes"* ]]; then
-            echo "No changes detected. Skipping execution."
-            echo "NO_CHANGES=true" >> $GITHUB_ENV
-            exit 0
-          else
-            echo "Change Set failed for another reason: $REASON"
-            exit 1
-          fi
-        fi
-        
-        echo "CHANGESET_NAME=cf-changeset-${{ github.run_id }}" >> $GITHUB_ENV
-        echo "Changes detected. Change Set created successfully."
-      fi
-  - name: Execute Change Set
-    if: ${{ env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true' }}
-    run: |
-      aws cloudformation execute-change-set \
-        --stack-name $STACK_NAME \
-        --change-set-name cf-changeset-${{ github.run_id }}
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy_vpc:
     name: Deploy VPC Stack
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'test' }}
-    env:
-      ACTIONS_STEP_DEBUG: 'true'
-      STACK_NAME: my-vpc-stack
-      TEMPLATE_FILE: cloudformation/templates/vpc.yaml
-      PARAMS_FILE: cloudformation/parameters/vpc-params.json
+    environment: test
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -99,19 +35,20 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
 
-      - <<: *x-deploy-stack-steps
+      - name: Deploy CloudFormation
+        uses: ./.github/actions/deploy-cloudformation
+        with:
+          STACK_NAME: my-vpc-stack
+          TEMPLATE_FILE: cloudformation/templates/vpc.yaml
+          PARAMS_FILE: cloudformation/parameters/vpc-params.json
 
   deploy_rds:
     name: Deploy RDS Stack
     runs-on: ubuntu-latest
     needs: deploy_vpc
-    environment: ${{ github.event.inputs.environment || 'test' }}
-    env:
-      STACK_NAME: my-rds-stack
-      TEMPLATE_FILE: cloudformation/templates/rds.yaml
-      PARAMS_FILE: cloudformation/parameters/rds-params.json
+    environment: test
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -120,25 +57,26 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
 
-      - <<: *x-deploy-stack-steps
+      - name: Deploy CloudFormation
+        uses: ./.github/actions/deploy-cloudformation
+        with:
+          STACK_NAME: my-rds-stack
+          TEMPLATE_FILE: cloudformation/templates/rds.yaml
+          PARAMS_FILE: cloudformation/parameters/rds-params.json
 
       - name: Set RDSSecretARN Output
         id: set_rds_secret
         run: |
-          RDS_SECRET_ARN=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='RDSSecretARN'].OutputValue" --output text)
+          RDS_SECRET_ARN=$(aws cloudformation describe-stacks --stack-name my-rds-stack --query "Stacks[0].Outputs[?OutputKey=='RDSSecretARN'].OutputValue" --output text)
           echo "RDS_SECRET_ARN=$RDS_SECRET_ARN" >> $GITHUB_ENV
           echo "::set-output name=RDSSecretARN::$RDS_SECRET_ARN"
 
   deploy_ec2:
     name: Deploy EC2 Stack
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'test' }}
-    env:
-      STACK_NAME: my-ec2-stack
-      TEMPLATE_FILE: cloudformation/templates/ec2.yaml
-      PARAMS_FILE: cloudformation/parameters/ec2-params.json
+    environment: test
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -147,6 +85,11 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
+          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubOIDCRole
 
-      - <<: *x-deploy-stack-steps
+      - name: Deploy CloudFormation
+        uses: ./.github/actions/deploy-cloudformation
+        with:
+          STACK_NAME: my-ec2-stack
+          TEMPLATE_FILE: cloudformation/templates/ec2.yaml
+          PARAMS_FILE: cloudformation/parameters/ec2-params.json
