@@ -71,7 +71,7 @@ Resources:
       BackupRetentionPeriod: 7
       DeletionProtection: false
       EnablePerformanceInsights: false
-      MonitoringInterval: 60
+      MonitoringInterval: 0
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
 
