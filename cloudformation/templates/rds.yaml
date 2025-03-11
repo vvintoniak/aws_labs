@@ -52,6 +52,14 @@ Resources:
           CidrIp: !ImportValue
             Fn::Sub: "${Environment}-VPC-CIDR"
 
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for RDS instance"
+      SubnetIds: !Split [",", !ImportValue 
+        Fn::Sub: "${Environment}-Subnet-IDs"
+      ]
+
   # RDS instance
   MyRDSInstance:
     Type: AWS::RDS::DBInstance
