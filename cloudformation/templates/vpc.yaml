@@ -83,6 +83,12 @@ Outputs:
     Export:
       Name: !Sub "${Environment}-Subnet-ID"
 
+  SubnetIds:
+    Description: "RDS Subnet IDs"
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${Environment}-Subnet-IDs"
+
   VpcCidr:
     Description: "VPC Cidr"
     Value: !Ref VpcCidr
