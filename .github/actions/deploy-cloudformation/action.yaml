@@ -1,0 +1,79 @@
+name: 'Deploy CloudFormation'
+description: 'Deploys a CloudFormation stack using change sets'
+inputs:
+  STACK_NAME:
+    description: 'CloudFormation Stack name'
+    required: true
+  TEMPLATE_FILE:
+    description: 'Path to the CloudFormation template file'
+    required: true
+  PARAMS_FILE:
+    description: 'Path to the CloudFormation parameters file'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate Template
+      shell: bash
+      run: aws cloudformation validate-template --template-body file://${{ inputs.TEMPLATE_FILE }}
+
+    - name: Create Change Set
+      id: create_changeset
+      shell: bash
+      run: |
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK_NAME }} \
+                        --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NOT_EXISTS")
+
+        if [[ "$STACK_STATUS" == "NOT_EXISTS" ]]; then
+          echo "Stack does not exist. Creating a new stack..."
+          aws cloudformation create-stack \
+            --stack-name ${{ inputs.STACK_NAME }} \
+            --template-body file://${{ inputs.TEMPLATE_FILE }} \
+            --parameters file://${{ inputs.PARAMS_FILE }} \
+            --capabilities CAPABILITY_NAMED_IAM
+          aws cloudformation wait stack-create-complete --stack-name ${{ inputs.STACK_NAME }}
+          echo "STACK_CREATED=true" >> $GITHUB_ENV
+        else
+          echo "Stack exists. Checking for changes..."
+          aws cloudformation create-change-set \
+            --stack-name ${{ inputs.STACK_NAME }} \
+            --template-body file://${{ inputs.TEMPLATE_FILE }} \
+            --parameters file://${{ inputs.PARAMS_FILE }} \
+            --change-set-name cf-changeset-${{ github.run_id }} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --change-set-type UPDATE > /dev/null
+
+          sleep 5
+
+          CHANGESET_STATUS=$(aws cloudformation describe-change-set \
+            --stack-name ${{ inputs.STACK_NAME }} \
+            --change-set-name cf-changeset-${{ github.run_id }} \
+            --query "Status" --output text)
+
+          if [[ "$CHANGESET_STATUS" == "FAILED" ]]; then
+            REASON=$(aws cloudformation describe-change-set \
+              --stack-name ${{ inputs.STACK_NAME }} \
+              --change-set-name cf-changeset-${{ github.run_id }} \
+              --query "StatusReason" --output text)
+
+            if [[ "$REASON" == *"The submitted information didn't contain changes"* ]]; then
+              echo "No changes detected. Skipping execution."
+              echo "NO_CHANGES=true" >> $GITHUB_ENV
+              exit 0
+            else
+              echo "Change Set failed for another reason: $REASON"
+              exit 1
+            fi
+          fi
+
+          echo "CHANGESET_NAME=cf-changeset-${{ github.run_id }}" >> $GITHUB_ENV
+          echo "Changes detected. Change Set created successfully."
+        fi
+
+    - name: Execute Change Set
+      if: ${{ env.STACK_CREATED != 'true' && env.NO_CHANGES != 'true' }}
+      shell: bash
+      run: |
+        aws cloudformation execute-change-set \
+          --stack-name ${{ inputs.STACK_NAME }} \
+          --change-set-name cf-changeset-${{ github.run_id }}
