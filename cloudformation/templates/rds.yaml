@@ -49,7 +49,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          CidrIp: !ImportValue SubnetId
+          CidrIp: !ImportValue VpcCidr
 
   # RDS instance
   MyRDSInstance:
