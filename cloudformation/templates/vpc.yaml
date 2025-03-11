@@ -86,3 +86,5 @@ Outputs:
   VpcCidr:
     Description: "VPC Cidr"
     Value: !Ref VpcCidr
+    Export:
+      Name: !Sub "${Environment}-VPC-CIDR"

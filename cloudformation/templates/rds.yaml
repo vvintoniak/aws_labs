@@ -49,7 +49,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          CidrIp: !ImportValue VpcCidr
+          CidrIp: !ImportValue
+            Fn::Sub: "${Environment}-VPC-CIDR"
 
   # RDS instance
   MyRDSInstance:
