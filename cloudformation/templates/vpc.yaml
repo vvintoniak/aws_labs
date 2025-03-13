@@ -1,21 +1,36 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "Basic VPC with one public subnet"
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC with one public and three private subnets in different AZs with NAT Gateway for private subnets'
 
 Parameters:
   Environment:
     Type: String
     Default: "test"
     Description: "Deployment environment (e.g., dev, prod)"
-
+  
   VpcCidr:
     Type: String
     Default: "10.0.0.0/16"
     Description: "VPC CIDR Block"
-
-  SubnetCidr:
+  
+  PublicSubnetCidr:
     Type: String
     Default: "10.0.1.0/24"
-    Description: "Subnet CIDR Block"
+    Description: "Public Subnet CIDR Block"
+  
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: "10.0.2.0/24"
+    Description: "Private Subnet 1 CIDR Block"
+  
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: "10.0.3.0/24"
+    Description: "Private Subnet 2 CIDR Block"
+  
+  PrivateSubnet3Cidr:
+    Type: String
+    Default: "10.0.4.0/24"
+    Description: "Private Subnet 3 CIDR Block"
 
 Resources:
   MyVPC:
@@ -32,12 +47,45 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: !Ref SubnetCidr
+      CidrBlock: !Ref PublicSubnetCidr
       MapPublicIpOnLaunch: true
       AvailabilityZone: !Select [ 0, !GetAZs "" ]
       Tags:
         - Key: Name
           Value: !Sub "${Environment}-Public-Subnet"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-Private-Subnet-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-Private-Subnet-2"
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PrivateSubnet3Cidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 2, !GetAZs "" ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-Private-Subnet-3"
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -54,14 +102,14 @@ Resources:
       VpcId: !Ref MyVPC
       Tags:
         - Key: Name
-          Value: Public-RouteTable
+          Value: !Sub "${Environment}-Public-RouteTable"
 
   DefaultRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
+      DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
 
   PublicSubnetRouteTableAssociation:
@@ -70,6 +118,58 @@ Resources:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
+  # NAT Gateway and its Elastic IP in the public subnet
+  NATEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: AttachGateway
+    Properties:
+      AllocationId: !GetAtt NATEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-NAT-Gateway"
+
+  # Private Route Table for private subnets
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-Private-Route-Table"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateRouteTable
+
 Outputs:
   VPCId:
     Description: "VPC ID"
@@ -77,20 +177,20 @@ Outputs:
     Export:
       Name: !Sub "${Environment}-VPC-ID"
 
-  SubnetId:
-    Description: "Public Subnet ID"
-    Value: !Ref PublicSubnet
+  PublicSubnets:
+    Description: "List of Public Subnet IDs"
+    Value: !Join [ ",", [ !Ref PublicSubnet ] ]
     Export:
-      Name: !Sub "${Environment}-Subnet-ID"
+      Name: !Sub "${Environment}-PublicSubnets"
 
-  SubnetIds:
-    Description: "RDS Subnet IDs"
-    Value: !Ref PublicSubnet
+  PrivateSubnets:
+    Description: "List of Private Subnet IDs"
+    Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3 ] ]
     Export:
-      Name: !Sub "${Environment}-Subnet-IDs"
+      Name: !Sub "${Environment}-PrivateSubnets"
 
-  VpcCidr:
-    Description: "VPC Cidr"
+  VpcCidrOutput:
+    Description: "VPC CIDR"
     Value: !Ref VpcCidr
     Export:
       Name: !Sub "${Environment}-VPC-CIDR"

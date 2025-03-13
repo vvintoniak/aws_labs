@@ -69,12 +69,14 @@ Resources:
       InstanceType: !Ref InstanceType
       KeyName: !Ref SSHKey
       NetworkInterfaces:
-        - AssociatePublicIpAddress: true
+        - AssociatePublicIpAddress: false
           DeviceIndex: "0"
-          SubnetId: !ImportValue
-            Fn::Sub: "${Environment}-Subnet-ID"
-          GroupSet:
-            - !Ref SSHSecurityGroup
+          SubnetId: !Select 
+            - 0
+            - !Split 
+              - ","
+              - !ImportValue 
+                  Fn::Sub: "${Environment}-PrivateSubnets"      
       Tags:
         - Key: Name
           Value: !Sub "${Environment}-EC2"

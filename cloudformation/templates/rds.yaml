@@ -52,15 +52,15 @@ Resources:
           CidrIp: !ImportValue
             Fn::Sub: "${Environment}-VPC-CIDR"
             
+  # RDS Subnet Group using private subnets
   RDSSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: "Subnet group for RDS instance"
+      DBSubnetGroupDescription: "Subnet group for RDS instance using private subnets"
       SubnetIds: !Split 
         - ","
         - !ImportValue
-            Fn::Sub: "${Environment}-Subnet-IDs"
-
+            Fn::Sub: "${Environment}-PrivateSubnets"
 
   # RDS instance
   MyRDSInstance:
