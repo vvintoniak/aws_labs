@@ -22,10 +22,6 @@ Parameters:
     Default: "db.t3.small"
     Description: "RDS instance class"
 
-  VPCId:
-    Type: AWS::EC2::VPC::Id
-    Description: "The VPC ID where the RDS instance will be deployed"
-
 Resources:
   # AWS Secrets Manager secret for storing RDS credentials
   RDSSecret:
@@ -42,12 +38,13 @@ Resources:
         - Key: Name
           Value: !Ref DBInstanceIdentifier
 
-  # Security Group for RDS, now using the same VPC as the private subnets
+  # Security Group for RDS, using the VPC ID from the VPC template
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Allows access from EC2 to RDS (port 3306)"
-      VpcId: !Ref VPCId
+      VpcId: !ImportValue
+        Fn::Sub: "${Environment}-VPC-ID"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3306
@@ -55,7 +52,7 @@ Resources:
           CidrIp: !ImportValue
             Fn::Sub: "${Environment}-VPC-CIDR"
             
-  # RDS Subnet Group using private subnets (ensure these subnets are in the same VPC as VPCId)
+  # RDS Subnet Group using private subnets exported from the VPC template
   RDSSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
