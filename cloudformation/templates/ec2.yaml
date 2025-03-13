@@ -99,5 +99,5 @@ Outputs:
     Value: !Ref MyEC2Instance
 
   PublicIP:
-    Description: "Public IP of EC2"
-    Value: !GetAtt MyEC2Instance.PublicIp
+    Description: "IP of EC2"
+    Value: !GetAtt MyEC2Instance.PrivateIpAddress
